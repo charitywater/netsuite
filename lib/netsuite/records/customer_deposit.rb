@@ -15,9 +15,10 @@ module NetSuite
       include Support::Records
       include Namespaces::TranCust
 
-      actions :add, :get
+      actions :add, :get, :upsert
 
-      fields :custom_form, :payment, :tran_date, :exchange_rate, :undep_funds, :memo
+      fields :custom_form, :payment, :tran_date, :exchange_rate, :undep_funds, :memo,
+             :check_num
 
       record_refs :customer, :sales_order, :account
 

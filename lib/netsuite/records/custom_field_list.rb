@@ -12,11 +12,19 @@ module NetSuite
         end
         
         @custom_fields_assoc = Hash.new
-        custom_fields.each { |custom_field| @custom_fields_assoc[custom_field.internal_id.to_sym] = custom_field }
+        custom_fields.each do |custom_field|
+          reference_id = custom_field.script_id || custom_field.internal_id
+          @custom_fields_assoc[reference_id.to_sym] = custom_field
+        end
       end
 
       def custom_fields
         @custom_fields ||= []
+      end
+
+      def delete_custom_field(field)
+        custom_fields.delete_if { |c| c.internal_id.to_sym == field }
+        @custom_fields_assoc.delete(field)
       end
 
       # In case you want to get only MultiSelectCustomFieldRef for example:
@@ -35,7 +43,9 @@ module NetSuite
 
         # write custom field
         if sym.to_s.end_with?('=')
-          return create_custom_field(sym.to_s[0..-2], args.first)
+          field_name = sym.to_s[0..-2]
+          delete_custom_field(field_name.to_sym)
+          return create_custom_field(field_name, args.first)
         end
 
         super(sym, *args, &block)
@@ -57,11 +67,23 @@ module NetSuite
               custom_field_value = custom_field.value.to_s
             end
 
-            {
+            base = {
               "platformCore:value" => custom_field_value,
-              '@internalId' => custom_field.internal_id,
               '@xsi:type' => custom_field.type
             }
+
+            # TODO this is broken in > 2013_1; need to conditionally change the synax here
+            # if NetSuite::Configuration.api_version < "2013_2"
+
+            if custom_field.internal_id
+              base['@internalId'] = custom_field.internal_id
+            end
+
+            if custom_field.script_id
+              base['@scriptId'] = custom_field.script_id
+            end
+
+            base
           end
         }
       end

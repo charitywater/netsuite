@@ -1,9 +1,11 @@
+[![Build Status](https://travis-ci.org/NetSweet/netsuite.svg)](https://travis-ci.org/NetSweet/netsuite)
+
 # NetSuite Ruby SuiteTalk Gem
 
 * This gem will act as a wrapper around the NetSuite SuiteTalk WebServices API. Wow, that is a mouthful.
 * The gem does not cover the entire API, only the subset that we have found useful to cover so far.
-* Extending the wrapper is pretty simple. Check out the [contribution help doc](https://github.com/RevolutionPrep/netsuite/wiki/Contributing-to-the-Supported-NetSuite-API)
-* NetSuite development is overall a pretty poor experience. We have a list of [NetSuite Development Resources](https://github.com/RevolutionPrep/netsuite/wiki/NetSuite-Development-Resources) that might make things a bit less painful.
+* Extending the wrapper is pretty simple. Check out the [contribution help doc](https://github.com/NetSweet/netsuite/wiki/Contributing-to-the-Supported-NetSuite-API)
+* NetSuite development is overall a pretty poor experience. We have a list of [NetSuite Development Resources](https://github.com/NetSweet/netsuite/wiki/NetSuite-Development-Resources) that might make things a bit less painful.
 
 ## Installation
 
@@ -19,13 +21,13 @@ Or install it yourself as:
 
     $ gem install netsuite
 
-This gem is built for ruby 1.9.x, checkout the [1-8-stable](https://github.com/RevolutionPrep/netsuite/tree/1-8-stable) branch for ruby 1.8.x support.
+This gem is built for ruby 1.9.x, checkout the [1-8-stable](https://github.com/NetSweet/netsuite/tree/1-8-stable) branch for ruby 1.8.x support.
 
 ## Testing
 Before contributing a patch make sure all existing tests pass.
 
 ```
-git clone git://github.com/RevolutionPrep/netsuite.git
+git clone git://github.com/NetSweet/netsuite.git
 cd netsuite
 bundle
 bundle exec rspec
@@ -39,23 +41,23 @@ Not sure how to find your account id? Search for "web service preferences" in th
 ```ruby
 NetSuite.configure do
   reset!
-  
+
   # optional, defaults to 2011_2
   api_version	'2012_1'
-  
+
   # optionally specify full wsdl URL (to switch to sandbox, for example)
   wsdl          "https://webservices.sandbox.netsuite.com/wsdl/v#{api_version}_0/netsuite.wsdl"
-  
+
   # or specify the sandbox flag if you don't want to deal with specifying a full URL
   sandbox	true
-  
+
   # often the netsuite servers will hang which would cause a timeout exception to be raised
   # if you don't mind waiting (e.g. processing NS via DJ), increasing the timeout should fix the issue
   read_timeout  100000
-  
+
   # you can specify a file or file descriptor to send the log output to (defaults to STDOUT)
   log           File.join(Rails.root, 'log/netsuite.log')
-  
+
   # login information
   email    	'email@domain.com'
   password 	'password'
@@ -64,22 +66,29 @@ NetSuite.configure do
 end
 ```
 
+There is a [convenience method](https://github.com/NetSweet/netsuite/blob/56fe7fae92908a2e3d6812ecc56516f773cacd45/lib/netsuite.rb#L180) to configure NetSuite based on ENV variables.
+
 ### Examples
 
+#### CRUD Operations
+
 ```ruby
-# retrieve a customer
+# get a customer
 customer = NetSuite::Records::Customer.get(:internal_id => 4)
 customer.is_person
 
 # or
 NetSuite::Records::Customer.get(4).is_person
 
+# get a list of customers
+customers = NetSuite::Records::Customer.get_list(:list => [4, 5, 6])
+
 # randomly assign a task
 customer_support_reps = [12345, 12346]
 
 task = NetSuite::Records::Task.new(
 	:title => 'Take Care of a Customer',
-	:assigned => NetSuite::Records::RecordRef.new(customer_support_reps.sample),
+	:assigned => NetSuite::Records::RecordRef.new(internal_id: customer_support_reps.sample),
 	:due_date => DateTime.now + 1,
 	:message => "Take care of this"
 )
@@ -91,6 +100,56 @@ task.add
 
 task.update :message => 'New Message'
 
+# using get_select_value with a custom record
+NetSuite::Records::BaseRefList.get_select_value(
+  field: 'custrecord_something',
+  customRecordType: {
+    '@internalId' => 10,
+    '@xsi:type' => 'customRecord'
+  }
+)
+
+# updating a custom field list
+# you need to push ALL the values of ALL of the custom fields that you want set on the record
+# you can't just push the values of the fields that you want to update: all of the values of
+# other fields will then fall back to their default values
+contact = NetSuite::Records::Contact.get(12345)
+contact.custom_field_list.custentity_alistfield = { internal_id: 1 }
+contact.custom_field_list.custentity_abooleanfield = true
+contact.update(custom_field_list: contact.custom_field_list)
+
+# getting a custom record
+record = NetSuite::Records::CustomRecord.get(
+  # custom record type
+  type_id: 10,
+  # reference to instance of the custom record type
+  internal_id: 100
+)
+
+# getting a list of custom records
+records = NetSuite::Records::CustomRecord.get_list(
+  # netsuite internalIDs
+  list: [1,2,3],
+  # only needed for a custom record
+  type_id: 1234
+)
+
+# adding a custom record
+record = NetSuite::Records::CustomRecord.new
+record.rec_type = NetSuite::Records::CustomRecord.new(internal_id: 10)
+record.custom_field_list.custrecord_locationstate = "New Jersey"
+record.add
+
+# updating a custom record
+record = NetSuite::Records::CustomRecord.new(internal_id: 100)
+record.custom_field_list.custrecord_locationstate = "New Jersey"
+record.update(custom_field_list: record.custom_field_list, rec_type: NetSuite::Records::CustomRecord.new(internal_id: 10))
+
+```
+
+#### Searching
+
+```ruby
 # basic search
 search = NetSuite::Records::Customer.search({
   basic: [
@@ -104,8 +163,17 @@ search = NetSuite::Records::Customer.search({
 
 `open https://system.netsuite.com/app/common/entity/custjob.nl?id=#{search.results.first.internal_id}`
 
+# searching for custom records
+NetSuite::Records::CustomRecord.search(basic: [
+{
+        field: 'recType',
+        operator: 'is',
+        # custom record type
+        value: NetSuite::Records::CustomRecordRef.new(:internal_id => 10),
+}]).results
+
 # advanced search building on saved search
-search = NetSuite::Records::Customer.search({
+NetSuite::Records::Customer.search({
   saved: 500,	# your saved search internalId
   basic: [
     {
@@ -127,20 +195,25 @@ search = NetSuite::Records::Customer.search({
         {
           field: 'custentity_acustomfield',
           operator: 'anyOf',
-          # type is needed for multiselect fields
+          # type is needed for all search fields
           type: 'SearchMultiSelectCustomField',
           value: [
             NetSuite::Records::CustomRecordRef.new(:internal_id => 1),
             NetSuite::Records::CustomRecordRef.new(:internal_id => 2),
           ]
-        }
+        },
+	{
+	  field: 'custbody_internetorder',
+	  type: 'SearchBooleanCustomField',
+	  value: true
+	}
       ]
     }
   ]
-})
+}).results
 
-# advanced search from stratch
-search = NetSuite::Records::Transaction.search({
+# advanced search from scratch
+NetSuite::Records::Transaction.search({
   criteria: {
     basic: [
       {
@@ -164,13 +237,12 @@ search = NetSuite::Records::Transaction.search({
           Time.parse("30/07/2013").iso8601,
 
           # or you can use a string. Note that the format below is different from the format of the above code
-          # but it matches exactly what NS returns 
+          # but it matches exactly what NS returns
           # "2012-01-01T22:00:00.000-07:00",
           # "2013-07-30T22:00:00.000-07:00"
         ]
       }
     ],
-
 
     # equivilent to the 'Account' label in the GUI
     accountJoin: [
@@ -198,7 +270,7 @@ search = NetSuite::Records::Transaction.search({
       }
     ]
   },
-  
+
   # the column syntax is a WIP. This will change in the future
   columns: {
     'tranSales:basic' => [
@@ -228,7 +300,7 @@ search = NetSuite::Records::Transaction.search({
   preferences: {
     page_size: 10
   }
-})
+}).results
 
 # basic search with pagination / SearchMorewithId
 search = NetSuite::Records::Customer.search(
@@ -251,6 +323,65 @@ search.results_in_batches do |batch|
   puts batch.map(&:internal_id)
 end
 
+# item search
+NetSuite::Records::InventoryItem.search({
+  criteria: {
+    basic: [
+      {
+        field: 'type',
+        operator: 'anyOf',
+        type: 'SearchEnumMultiSelectField',
+        value: [
+          '_inventoryItem',
+
+          # note that the naming conventions aren't consistent: AssemblyItem != _assemblyItem
+          '_assembly'
+        ]
+      },
+      {
+        field: 'isInactive',
+        value: false
+      }
+    ]
+  }
+}).results.first
+
+# set body_fields_only = false to include the majority of lists associated with records in the XML response
+# Some lists you just can't include with searches (a customer's AddressBookList, for example)
+
+# In order to get the full record data for those records whose lists aren't included when body_fields_only = false
+# you will have to run a get_list call on the resulting internalIds returned from the search you've executed
+
+search = NetSuite::Records::File.search({
+  preferences: {
+    body_fields_only: false,
+    page_size: 20
+  }
+})
+
+search.results_in_batches do |batch|
+  batch.each do |file|
+    next unless file.file_type == "_JAVASCRIPT"
+    puts Base64.decode64(file.content)
+  end
+end
+
+# the getList operation
+NetSuite::Records::CustomRecord.get_list(
+  # netsuite internalIDs
+  list: [1,2,3],
+  # only needed for a custom record
+  type_id: 1234,
+  # allow inclomplete results (defaults to false)
+  allow_incomplete: true
+).each do |record|
+  # do your thing...
+end
+```
+
+#### Non-standard Operations
+
+```ruby
 # making a call that hasn't been implemented yet
 NetSuite::Configuration.connection.call :get_customization_id, message: {
   'platformMsgs:customizationType' => { '@getCustomizationType' => 'customRecordType'},
@@ -259,53 +390,6 @@ NetSuite::Configuration.connection.call :get_customization_id, message: {
 
 server_time_response = NetSuite::Configuration.connection.call :get_server_time
 server_time_response.body[:get_server_time_response][:get_server_time_result][:server_time]
-
-# using get_select_value with a custom record
-NetSuite::Records::BaseRefList.get_select_value(
-  field: 'custrecord_something',
-  customRecordType: {
-    '@internalId' => 10,
-    '@xsi:type' => 'customRecord'
-  }
-)
-
-# updating a custom field list
-# you need to push ALL the values of ALL of the custom fields that you want set on the record
-# you can't just push the values of the fields that you want to update: all of the values of
-# other fields will then fall back to their default values
-contact = NetSuite::Records::Contact.get(12345)
-contact.custom_field_list.custentity_alistfield = { internal_id: 1 }
-contact.custom_field_list.custentity_abooleanfield = true
-contact.update(custom_field_list: contact.custom_field_list)
-
-# the getList operation
-NetSuite::Records::CustomRecord.get_list(
-  # netsuite internalIDs
-  list: [1,2,3],
-  # only needed for a custom record
-  type_id: 1234
-).each do |record|
-  # do your thing...
-end
-
-# getting a custom record
-record = NetSuite::Records::CustomRecord.get(
-  # custom record type
-  type_id: 10,
-  # reference to instance of the custom record type
-  internal_id: 100
-)
-
-# adding a custom record
-record = NetSuite::Records::CustomRecord.new
-record.rec_type = NetSuite::Records::CustomRecord.new(internal_id: 10)
-record.custom_field_list.custrecord_locationstate = "New Jersey"
-record.add
-
-# updating a custom record
-record = NetSuite::Records::CustomRecord.new(internal_id: 100)
-record.custom_field_list.custrecord_locationstate = "New Jersey"
-record.update(custom_field_list: record.custom_field_list, rec_type: NetSuite::Records::CustomRecord.new(internal_id: 10))
 
 # getting a list of states
 states = NetSuite::Configuration.connection.call(:get_all, message: {

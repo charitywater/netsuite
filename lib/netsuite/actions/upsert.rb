@@ -1,3 +1,4 @@
+# https://system.netsuite.com/help/helpcenter/en_US/Output/Help/SuiteCloudCustomizationScriptingWebServices/SuiteTalkWebServices/upsert.html
 module NetSuite
   module Actions
     class Upsert
@@ -31,10 +32,6 @@ module NetSuite
             '@xsi:type' => @object.record_type
           }
         }
-
-        if @object.respond_to?(:internal_id) && @object.internal_id
-          hash['platformMsgs:record']['@platformMsgs:internalId'] = @object.internal_id
-        end
 
         if @object.respond_to?(:external_id) && @object.external_id
           hash['platformMsgs:record']['@platformMsgs:externalId'] = @object.external_id
