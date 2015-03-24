@@ -54,7 +54,7 @@ module NetSuite
       end
 
       def country_enum iso_country_code
-        @@iso_country_code_to_enum ||= YAML.load_file(File.join(File.dirname(__FILE__),"../yaml/iso_country_code_to_enum.yml"))
+        @@iso_country_code_to_enum ||= YAML.load_file(::File.join(::File.dirname(__FILE__),"../yaml/iso_country_code_to_enum.yml"))
         @@iso_country_code_to_enum[iso_country_code] || iso_country_code
       end
 
