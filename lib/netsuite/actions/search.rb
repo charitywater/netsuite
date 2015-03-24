@@ -1,3 +1,4 @@
+# https://system.netsuite.com/help/helpcenter/en_US/Output/Help/SuiteCloudCustomizationScriptingWebServices/SuiteTalkWebServices/search.html
 module NetSuite
   module Actions
     class Search
@@ -21,7 +22,7 @@ module NetSuite
         # https://system.netsuite.com/help/helpcenter/en_US/Output/Help/SuiteCloudCustomizationScriptingWebServices/SuiteTalkWebServices/SettingSearchPreferences.html
         # https://webservices.netsuite.com/xsd/platform/v2012_2_0/messages.xsd
 
-        preferences = NetSuite::Configuration.auth_header(credentials).update(
+        preferences = NetSuite::Configuration.auth_header(credentials).merge(
           (@options.delete(:preferences) || {}).inject({'platformMsgs:SearchPreferences' => {}}) do |h, (k, v)|
             h['platformMsgs:SearchPreferences'][k.to_s.lower_camelcase] = v
             h
@@ -29,7 +30,7 @@ module NetSuite
         )
 
         NetSuite::Configuration
-          .connection(soap_header: preferences)
+          .connection({ soap_header: preferences }, credentials)
           .call (@options.has_key?(:search_id)? :search_more_with_id : :search), :message => request_body
       end
 
@@ -116,12 +117,17 @@ module NetSuite
                 'platformCore:customField' => custom_field_list,
                 :attributes! => {
                   'platformCore:customField' => {
-                    'internalId' => condition[:value].map { |h| h[:field] },
+                    'scriptId' => condition[:value].map { |h| h[:field] },
                     'operator' => condition[:value].map { |h| h[:operator] },
                     'xsi:type' => condition[:value].map { |h| "platformCore:#{h[:type]}" }
                   }
                 }
               }
+
+              # https://github.com/NetSweet/netsuite/commit/54d7b011d9485dad33504135dfe8153c86cae9a0#commitcomment-8443976
+              if NetSuite::Configuration.api_version < "2013_2"
+                h[element_name][:attributes!]['platformCore:customField']['internalId'] = h[element_name][:attributes!]['platformCore:customField'].delete('scriptId')
+              end
 
               # === END CUSTOM FIELD
             else

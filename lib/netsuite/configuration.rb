@@ -96,15 +96,19 @@ module NetSuite
         'xmlns:platformCommon' => "urn:common_#{api_version}.platform.webservices.netsuite.com",
         'xmlns:listRel'        => "urn:relationships_#{api_version}.lists.webservices.netsuite.com",
         'xmlns:tranSales'      => "urn:sales_#{api_version}.transactions.webservices.netsuite.com",
+        'xmlns:tranPurch'      => "urn:purchases_#{api_version}.transactions.webservices.netsuite.com",
         'xmlns:actSched'       => "urn:scheduling_#{api_version}.activities.webservices.netsuite.com",
         'xmlns:setupCustom'    => "urn:customization_#{api_version}.setup.webservices.netsuite.com",
         'xmlns:listAcct'       => "urn:accounting_#{api_version}.lists.webservices.netsuite.com",
         'xmlns:tranBank'       => "urn:bank_#{api_version}.transactions.webservices.netsuite.com",
         'xmlns:tranCust'       => "urn:customers_#{api_version}.transactions.webservices.netsuite.com",
+        'xmlns:tranInvt'       => "urn:inventory_#{api_version}.transactions.webservices.netsuite.com",
         'xmlns:listSupport'    => "urn:support_#{api_version}.lists.webservices.netsuite.com",
         'xmlns:tranGeneral'    => "urn:general_#{api_version}.transactions.webservices.netsuite.com",
         'xmlns:listMkt'        => "urn:marketing_#{api_version}.lists.webservices.netsuite.com",
         'xmlns:listWebsite'    => "urn:website_#{api_version}.lists.webservices.netsuite.com",
+        'xmlns:fileCabinet'    => "urn:filecabinet_#{api_version}.documents.webservices.netsuite.com",
+        'xmlns:listEmp'        => "urn:employees_#{api_version}.lists.webservices.netsuite.com"
       }
     end
 
