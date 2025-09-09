@@ -6,7 +6,7 @@ module NetSuite
       include Support::Records
       include Namespaces::TranCust
 
-      fields :amount, :gross_amt, :rate, :quantity, :is_taxable, :order_line, :line, :description
+      fields :amount, :gross_amt, :rate, :quantity, :is_taxable, :order_line, :line, :description, :tax_code
       field :custom_field_list,    CustomFieldList
 
       record_refs :department,

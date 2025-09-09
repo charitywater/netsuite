@@ -17,7 +17,8 @@ describe NetSuite::Records::CashRefundItem do
       :item,
       :klass,
       :location,
-      :price
+      :price,
+      :tax_code
     ].each do |record_ref|
       expect(item).to have_record_ref(record_ref)
     end
